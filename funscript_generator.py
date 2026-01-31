@@ -32,6 +32,24 @@ cpu = None
 config = None
 
 
+class _FallbackLog:
+    def debug(self, msg: str) -> None:
+        sys.stderr.write(str(msg) + "\n")
+
+    def info(self, msg: str) -> None:
+        sys.stderr.write(str(msg) + "\n")
+
+    def error(self, msg: str) -> None:
+        sys.stderr.write(str(msg) + "\n")
+
+    def progress(self, _: float) -> None:
+        pass
+
+
+def _get_log():
+    return log or _FallbackLog()
+
+
 def _fatal_error(message: str) -> str:
     sys.stderr.write(message + "\n")
     sys.stderr.flush()
@@ -1765,12 +1783,13 @@ def run(json_input: Dict[str, Any], output: Dict[str, Any]) -> None:
     """Main execution logic."""
     plugin_args = None
     args = json_input.get("args") or {}
+    logger = _get_log()
     try:
-        log.debug(json_input["server_connection"])
+        logger.debug(json_input["server_connection"])
         os.chdir(json_input["server_connection"]["PluginDir"])
         initialize_stash(json_input["server_connection"])
     except Exception as e:
-        log.error(f"Failed to initialize: {e}")
+        logger.error(f"Failed to initialize: {e}")
         output["output"] = "error"
         return
 
