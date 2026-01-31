@@ -50,6 +50,14 @@ def _get_log():
     return log or _FallbackLog()
 
 
+def _venv_site_paths(venv_dir: str) -> List[str]:
+    py_ver = f"python{sys.version_info.major}.{sys.version_info.minor}"
+    return [
+        os.path.join(venv_dir, "lib", py_ver, "site-packages"),
+        os.path.join(venv_dir, "lib64", py_ver, "site-packages"),
+    ]
+
+
 def _fatal_error(message: str) -> str:
     sys.stderr.write(message + "\n")
     sys.stderr.flush()
@@ -59,6 +67,12 @@ def _fatal_error(message: str) -> str:
 def init_dependencies() -> Optional[str]:
     """Initialize dependencies and config. Returns error string on failure."""
     global log, StashInterface, np, cv2, VideoReader, cpu, config
+    if PLUGIN_DIR:
+        venv_dir = os.path.join(PLUGIN_DIR, ".venv")
+        if os.path.isdir(venv_dir):
+            for path in _venv_site_paths(venv_dir):
+                if os.path.isdir(path) and path not in sys.path:
+                    sys.path.insert(0, path)
     try:
         import stashapi.log as log_mod
         from stashapi.stashapp import StashInterface as SI
@@ -92,6 +106,7 @@ stash: Optional[StashInterface] = None
 progress: float = 0.0
 total_tasks: int = 0
 completed_tasks: int = 0
+PLUGIN_DIR: Optional[str] = None
 
 # ----------------- Optical Flow Functions -----------------
 
@@ -1746,10 +1761,20 @@ def process_all_scenes(overwrite: Optional[bool] = None) -> None:
 def install_python_deps() -> None:
     """Install required Python dependencies using pip."""
     logger = _get_log()
+    if not PLUGIN_DIR:
+        raise RuntimeError("Plugin directory not set")
+    venv_dir = os.path.join(PLUGIN_DIR, ".venv")
+    venv_pip = os.path.join(venv_dir, "bin", "pip")
+
+    cmd_venv = [sys.executable, "-m", "venv", venv_dir]
+    logger.info(f"Running: {' '.join(cmd_venv)}")
+    proc_venv = subprocess.run(cmd_venv, capture_output=True, text=True)
+    if proc_venv.returncode != 0:
+        err = proc_venv.stderr.strip() or proc_venv.stdout.strip() or "unknown error"
+        raise RuntimeError(f"venv create failed: {err}")
+
     cmd = [
-        sys.executable,
-        "-m",
-        "pip",
+        venv_pip,
         "install",
         "stashapp-tools",
         "numpy",
@@ -1761,6 +1786,10 @@ def install_python_deps() -> None:
     if proc.returncode != 0:
         err = proc.stderr.strip() or proc.stdout.strip() or "unknown error"
         raise RuntimeError(f"pip install failed: {err}")
+
+    for path in _venv_site_paths(venv_dir):
+        if os.path.isdir(path) and path not in sys.path:
+            sys.path.insert(0, path)
 
 
 # ----------------- Main Execution -----------------
@@ -1785,6 +1814,11 @@ def run(json_input: Dict[str, Any], output: Dict[str, Any]) -> None:
     plugin_args = None
     args = json_input.get("args") or {}
     logger = _get_log()
+    global PLUGIN_DIR
+    try:
+        PLUGIN_DIR = json_input["server_connection"].get("PluginDir")
+    except Exception:
+        PLUGIN_DIR = None
     plugin_args = args.get("mode")
 
     if plugin_args == "install_deps":
