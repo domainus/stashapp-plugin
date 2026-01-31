@@ -20,41 +20,56 @@ from typing import Dict, Any, List, Optional, Callable, Tuple
 
 # ----------------- Setup and Dependencies -----------------
 
-# Use PythonDepManager for dependency management
-try:
-    from PythonDepManager import ensure_import
-    
-    # Install and ensure all required dependencies with specific versions
-    ensure_import(
-        "stashapi:stashapp-tools==0.2.58",
-        "numpy==1.26.4",
-        "opencv-python==4.10.0.84",
-        "decord==0.6.0"
-    )
-    
-    # Import the dependencies after ensuring they're available
-    import stashapi.log as log
-    from stashapi.stashapp import StashInterface
-    import numpy as np
-    import cv2
-    from decord import VideoReader, cpu
-    
-except ImportError as e:
-    print(f"Failed to import PythonDepManager or required dependencies: {e}")
-    print("Please ensure PythonDepManager is installed and available.")
-    sys.exit(1)
-except Exception as e:
-    print(f"Error during dependency management: {e}")
-    import traceback
-    print(f"Stack trace: {traceback.format_exc()}")
-    sys.exit(1)
+# Deps are loaded lazily so failures can be returned to Stash instead of just exit 1.
+log = None
+StashInterface = None
+np = None
+cv2 = None
+VideoReader = None
+cpu = None
+config = None
 
-# Import local config
-try:
-    import funscript_generator_config as config
-except ModuleNotFoundError:
-    log.error("Please provide a funscript_generator_config.py file with the required variables.")
-    raise Exception("Please provide a funscript_generator_config.py file with the required variables.")
+
+def _fatal_error(message: str) -> str:
+    sys.stderr.write(message + "\n")
+    sys.stderr.flush()
+    return message
+
+
+def init_dependencies() -> Optional[str]:
+    """Initialize dependencies and config. Returns error string on failure."""
+    global log, StashInterface, np, cv2, VideoReader, cpu, config
+    try:
+        from PythonDepManager import ensure_import
+
+        ensure_import(
+            "stashapi:stashapp-tools==0.2.58",
+            "numpy==1.26.4",
+            "opencv-python==4.10.0.84",
+            "decord==0.6.0"
+        )
+
+        import stashapi.log as log_mod
+        from stashapi.stashapp import StashInterface as SI
+        import numpy as np_mod
+        import cv2 as cv2_mod
+        from decord import VideoReader as VR, cpu as cpu_mod
+    except Exception as e:
+        return _fatal_error(f"Dependency error: {e}")
+
+    try:
+        import funscript_generator_config as cfg
+    except Exception as e:
+        return _fatal_error(f"Config error: {e} (missing funscript_generator_config.py?)")
+
+    log = log_mod
+    StashInterface = SI
+    np = np_mod
+    cv2 = cv2_mod
+    VideoReader = VR
+    cpu = cpu_mod
+    config = cfg
+    return None
 
 # ----------------- Global Variables -----------------
 
@@ -1734,6 +1749,10 @@ def run(json_input: Dict[str, Any], output: Dict[str, Any]) -> None:
     """Main execution logic."""
     plugin_args = None
     args = json_input.get("args") or {}
+    dep_error = init_dependencies()
+    if dep_error:
+        output["error"] = dep_error
+        return
     try:
         log.debug(json_input["server_connection"])
         os.chdir(json_input["server_connection"]["PluginDir"])
