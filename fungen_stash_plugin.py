@@ -33,6 +33,33 @@ def _get_args(input_data: Dict[str, Any]) -> Dict[str, Any]:
     return input_data.get("args") or {}
 
 
+def _get_settings(input_data: Dict[str, Any]) -> Dict[str, Any]:
+    settings = input_data.get("settings") or {}
+    if isinstance(settings, dict):
+        return settings
+    return {}
+
+
+def _plugin_dir(input_data: Dict[str, Any], args: Dict[str, Any], server_connection: Dict[str, Any]) -> str:
+    plugin_dir = (
+        input_data.get("pluginDir")
+        or args.get("pluginDir")
+        or server_connection.get("PluginDir")
+        or os.getcwd()
+    )
+    return os.path.abspath(os.path.expanduser(str(plugin_dir)))
+
+
+def _expand_plugin_dir(
+    value: str, input_data: Dict[str, Any], args: Dict[str, Any], server_connection: Dict[str, Any]
+) -> str:
+    if not isinstance(value, str):
+        return value
+    if "{pluginDir}" not in value:
+        return value
+    return value.replace("{pluginDir}", _plugin_dir(input_data, args, server_connection))
+
+
 def _get_cookie(server_connection: Dict[str, Any]) -> Optional[Dict[str, str]]:
     cookie = server_connection.get("SessionCookie")
     if not cookie:
@@ -211,7 +238,7 @@ def _run_fungen_for_scene(
 
 def _run_install(install_dir: str, repo_url: str, repo_ref: str) -> Tuple[bool, str]:
     if not repo_url:
-        return False, "Missing fungen_repo for install"
+        return False, "Missing fungen_repo for install (set it in the Install FunGen CLI task)"
     install_dir = os.path.expanduser(install_dir)
     os.makedirs(install_dir, exist_ok=True)
     git_dir = os.path.join(install_dir, ".git")
@@ -237,13 +264,15 @@ def _run_install(install_dir: str, repo_url: str, repo_ref: str) -> Tuple[bool, 
 def main() -> None:
     input_data = _read_input()
     args = _get_args(input_data)
+    settings = _get_settings(input_data)
     server_connection = _get_server_connection(input_data)
     cookie = _get_cookie(server_connection)
     url = _get_server_url(server_connection, args)
 
     scope = args.get("scope") or "all"
-    python_path = args.get("python_path") or "python3"
-    fungen_path = args.get("fungen_path") or ""
+    python_path = args.get("python_path") or settings.get("python_path") or "python3"
+    fungen_path = args.get("fungen_path") or settings.get("fungen_path") or ""
+    fungen_path = _expand_plugin_dir(fungen_path, input_data, args, server_connection)
     if not fungen_path and scope != "install":
         print(json.dumps({"error": "Missing required arg: fungen_path"}))
         return
@@ -270,8 +299,9 @@ def main() -> None:
     try:
         if scope == "install":
             install_dir = args.get("install_dir") or ""
-            repo_url = args.get("fungen_repo") or ""
-            repo_ref = args.get("fungen_ref") or ""
+            install_dir = _expand_plugin_dir(install_dir, input_data, args, server_connection)
+            repo_url = args.get("fungen_repo") or settings.get("fungen_repo") or ""
+            repo_ref = args.get("fungen_ref") or settings.get("fungen_ref") or ""
             if not install_dir:
                 raise RuntimeError("Missing install_dir for scope=install")
             ok, msg = _run_install(install_dir, repo_url, repo_ref)

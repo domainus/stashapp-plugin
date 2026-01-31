@@ -1,11 +1,33 @@
 name: Funscript Generator (FunGen)
 description: Generate funscripts for Stash scenes using the FunGen CLI.
-version: 0.1.3
+version: 0.1.5
 exec:
   - python3
   - "{pluginDir}/fungen_stash_plugin.py"
 interface: raw
 errLog: info
+
+settings:
+  - name: FunGen repo URL
+    key: fungen_repo
+    type: string
+    default: ""
+    description: Git URL for the FunGen repo (used by Install FunGen CLI).
+  - name: FunGen repo ref
+    key: fungen_ref
+    type: string
+    default: ""
+    description: Optional branch, tag, or commit for the FunGen repo.
+  - name: FunGen path
+    key: fungen_path
+    type: string
+    default: "{pluginDir}/fungen/main.py"
+    description: Path to FunGen entrypoint (main.py) on the Stash host.
+  - name: Python path
+    key: python_path
+    type: string
+    default: python3
+    description: Python executable to use when running FunGen.
 
 tasks:
   - name: Install FunGen CLI
