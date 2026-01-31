@@ -1,6 +1,6 @@
 name: Funscript Generator
 description: Generates funscript files from video scenes using optical flow analysis. Tag scenes with 'FunscriptGenerator_Process' to queue them for processing.
-version: 0.1.0
+version: 0.1.1
 url: https://discourse.stashapp.cc/t/funscript-generator/5124
 exec:
   - python
@@ -11,6 +11,16 @@ tasks:
     description: Process all scenes tagged with 'FunscriptGenerator_Process' and generate funscript files
     defaultArgs:
       mode: process_scenes
+  - name: Generate funscripts for all scenes (skip existing)
+    description: Generate funscripts for all scenes, skipping videos that already have a funscript
+    defaultArgs:
+      mode: process_all
+      overwrite: false
+  - name: Regenerate funscripts for all scenes (overwrite)
+    description: Regenerate funscripts for all scenes, overwriting any existing funscript files
+    defaultArgs:
+      mode: process_all
+      overwrite: true
 settings:
   trigger_tag:
     displayName: Trigger Tag

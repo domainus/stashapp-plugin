@@ -1,8 +1,8 @@
 - id: funscript-generator
   name: Funscript Generator
-  version: 0.1.0
+  version: 0.1.1
   date: 2026-01-31 00:00:00
-  path: dist/funscript-generator-0.1.0.zip
-  sha256: 1e822316ef58473d1c7362de3a15fc24d2491d13d8d85f16a599f195141abe90
+  path: dist/funscript-generator-0.1.1.zip
+  sha256: 5d9f9a6dd61266947238e90cb02b1fce7c2ba20cf3fe805f23f3dbb54fc3a8ef
   metadata:
     description: Generate funscripts for Stash scenes using a Funscript Generator–based CLI fork.

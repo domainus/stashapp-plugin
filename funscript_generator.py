@@ -1481,6 +1481,16 @@ def get_scenes_with_tag(tag_name: str) -> List[Dict[str, Any]]:
     return scenes or []
 
 
+def get_all_scenes() -> List[Dict[str, Any]]:
+    """Get all scenes in the library."""
+    scenes = stash.find_scenes(
+        f={},
+        filter={"per_page": -1},
+        fragment="id files { path } tags { id name }"
+    )
+    return scenes or []
+
+
 def remove_tag_from_scene(scene_id: str, tag_name: str) -> None:
     """Remove a tag from a scene."""
     tag = stash.find_tag(tag_name, create=False)
@@ -1582,35 +1592,37 @@ def get_error_tag() -> str:
 
 # ----------------- Task Functions -----------------
 
-def process_tagged_scenes() -> None:
-    """Process all scenes tagged with the trigger tag."""
+def process_scenes(
+    scenes: List[Dict[str, Any]],
+    overwrite_override: Optional[bool] = None,
+    trigger_tag: Optional[str] = None,
+) -> None:
+    """Process a list of scenes."""
     global total_tasks, completed_tasks
-    
-    trigger_tag = get_trigger_tag()
-    scenes = get_scenes_with_tag(trigger_tag)
+
     if not scenes:
-        log.info(f"No scenes found with tag '{trigger_tag}'")
+        log.info("No scenes found to process")
         return
-    
+
     total_tasks = len(scenes)
     completed_tasks = 0
     log.info(f"Found {total_tasks} scenes to process")
     log.progress(0.0)
-    
+
     for scene in scenes:
         scene_id = scene["id"]
         video_path = get_scene_file_path(scene)
-        
+
         if not video_path:
             log.error(f"No file path for scene {scene_id}")
             completed_tasks += 1
             continue
-        
+
         if not os.path.exists(video_path):
             log.error(f"Video file not found: {video_path}")
             completed_tasks += 1
             continue
-        
+
         # Build processing parameters from plugin settings (with config file fallback)
         # Convert 0-10 integer settings to their actual decimal values
         detrend_window_raw = get_plugin_setting('detrend_window', 2)  # Default: 2 (was 1.5)
@@ -1619,13 +1631,15 @@ def process_tagged_scenes() -> None:
         random_speed_raw = get_plugin_setting('random_speed', 3)  # Default: 3 (was 0.3, scale 0-10)
         auto_home_delay_raw = get_plugin_setting('auto_home_delay', 1)  # Default: 1 (was 1.0)
         auto_home_duration_raw = get_plugin_setting('auto_home_duration', 1)  # Default: 1 (was 0.5, rounded)
-        
+
+        overwrite_flag = bool(get_plugin_setting('overwrite', False)) if overwrite_override is None else bool(overwrite_override)
+
         params = {
             "threads": int(get_plugin_setting('threads', os.cpu_count() or 4)),
             "detrend_window": float(max(1, min(10, int(detrend_window_raw)))),  # Clamp to 1-10 seconds
             "norm_window": float(max(1, min(10, int(norm_window_raw)))),  # Clamp to 1-10 seconds
             "batch_size": int(get_plugin_setting('batch_size', 3000)),
-            "overwrite": bool(get_plugin_setting('overwrite', False)),
+            "overwrite": overwrite_flag,
             "keyframe_reduction": bool(get_plugin_setting('keyframe_reduction', True)),
             "vr_mode": is_vr_scene(scene),
             "pov_mode": bool(get_plugin_setting('pov_mode', False)),
@@ -1637,14 +1651,14 @@ def process_tagged_scenes() -> None:
             "auto_home_duration": float(max(0, min(10, int(auto_home_duration_raw)))),  # Clamp to 0-10 seconds
             "smart_limit": bool(get_plugin_setting('smart_limit', True)),
         }
-        
+
         log.info(f"Processing scene {scene_id}: {video_path}")
-        
+
         def progress_cb(prog: int) -> None:
             scene_progress = prog / 100.0
             overall_progress = (completed_tasks + scene_progress) / total_tasks
             log.progress(overall_progress)
-        
+
         try:
             error = process_video(
                 video_path,
@@ -1652,34 +1666,51 @@ def process_tagged_scenes() -> None:
                 log.info,
                 progress_callback=progress_cb
             )
-            
+
             if error:
                 log.error(f"Error processing scene {scene_id}")
                 add_tag_to_scene(scene_id, get_error_tag())
             else:
                 log.info(f"Successfully processed scene {scene_id}")
-                
+
                 # Add completion tag if configured
                 complete_tag = get_complete_tag()
                 if complete_tag:
                     add_tag_to_scene(scene_id, complete_tag)
-                
+
                 # Add scene marker if configured
                 if get_plugin_setting('add_marker', True):
                     add_scene_marker(scene_id, "Funscript Generated", 0, "Funscript")
-            
-            # Remove trigger tag
-            remove_tag_from_scene(scene_id, trigger_tag)
-            
+
+            # Remove trigger tag if requested
+            if trigger_tag:
+                remove_tag_from_scene(scene_id, trigger_tag)
+
         except Exception as e:
             log.error(f"Exception processing scene {scene_id}: {e}")
             add_tag_to_scene(scene_id, get_error_tag())
-        
+
         completed_tasks += 1
         log.progress(completed_tasks / total_tasks)
-    
+
     log.info(f"Completed processing {total_tasks} scenes")
     log.progress(1.0)
+
+
+def process_tagged_scenes() -> None:
+    """Process all scenes tagged with the trigger tag."""
+    trigger_tag = get_trigger_tag()
+    scenes = get_scenes_with_tag(trigger_tag)
+    if not scenes:
+        log.info(f"No scenes found with tag '{trigger_tag}'")
+        return
+    process_scenes(scenes, overwrite_override=None, trigger_tag=trigger_tag)
+
+
+def process_all_scenes(overwrite: Optional[bool] = None) -> None:
+    """Process all scenes in the library."""
+    scenes = get_all_scenes()
+    process_scenes(scenes, overwrite_override=overwrite, trigger_tag=None)
 
 
 # ----------------- Main Execution -----------------
@@ -1702,6 +1733,7 @@ def read_json_input() -> Dict[str, Any]:
 def run(json_input: Dict[str, Any], output: Dict[str, Any]) -> None:
     """Main execution logic."""
     plugin_args = None
+    args = json_input.get("args") or {}
     try:
         log.debug(json_input["server_connection"])
         os.chdir(json_input["server_connection"]["PluginDir"])
@@ -1712,12 +1744,18 @@ def run(json_input: Dict[str, Any], output: Dict[str, Any]) -> None:
         return
 
     try:
-        plugin_args = json_input['args'].get("mode")
+        plugin_args = args.get("mode")
     except (KeyError, TypeError):
         pass
     
     if plugin_args == "process_scenes":
         process_tagged_scenes()
+        output["output"] = "ok"
+        return
+
+    if plugin_args == "process_all":
+        overwrite = args.get("overwrite")
+        process_all_scenes(overwrite=overwrite)
         output["output"] = "ok"
         return
     
