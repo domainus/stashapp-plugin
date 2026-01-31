@@ -1,6 +1,6 @@
 name: Funscript Generator
 description: Generates funscript files from video scenes using optical flow analysis. Tag scenes with 'FunscriptGenerator_Process' to queue them for processing.
-version: 0.1.11
+version: 0.1.12
 url: https://discourse.stashapp.cc/t/funscript-generator/5124
 exec:
   - python

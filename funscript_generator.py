@@ -1758,7 +1758,7 @@ def process_all_scenes(overwrite: Optional[bool] = None) -> None:
     process_scenes(scenes, overwrite_override=overwrite, trigger_tag=None)
 
 
-def install_python_deps() -> None:
+def install_python_deps(allow_system_pip: bool) -> None:
     """Install required Python dependencies using pip."""
     logger = _get_log()
     if not PLUGIN_DIR:
@@ -1771,8 +1771,7 @@ def install_python_deps() -> None:
     proc_venv = subprocess.run(cmd_venv, capture_output=True, text=True)
     if proc_venv.returncode != 0:
         err = proc_venv.stderr.strip() or proc_venv.stdout.strip() or "unknown error"
-        allow_system = bool(get_plugin_setting("allow_system_pip", False))
-        if not allow_system:
+        if not allow_system_pip:
             raise RuntimeError(f"venv create failed: {err}")
         cmd = [
             sys.executable,
@@ -1834,6 +1833,7 @@ def run(json_input: Dict[str, Any], output: Dict[str, Any]) -> None:
     args = json_input.get("args") or {}
     logger = _get_log()
     global PLUGIN_DIR
+    settings = json_input.get("settings") or {}
     try:
         PLUGIN_DIR = json_input["server_connection"].get("PluginDir")
     except Exception:
@@ -1842,7 +1842,8 @@ def run(json_input: Dict[str, Any], output: Dict[str, Any]) -> None:
 
     if plugin_args == "install_deps":
         try:
-            install_python_deps()
+            allow_system = bool(args.get("allow_system_pip", settings.get("allow_system_pip", False)))
+            install_python_deps(allow_system)
             output["output"] = "ok"
         except Exception as e:
             output["error"] = str(e)
