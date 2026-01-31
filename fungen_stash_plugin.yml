@@ -1,7 +1,7 @@
 name: Funscript Generator (FunGen)
 id: fungen-stash-plugin
 description: Generate funscripts for Stash scenes using the FunGen CLI.
-version: 0.1.0
+version: 0.1.1
 exec:
   - python3
   - "{pluginDir}/fungen_stash_plugin.py"
