@@ -1,6 +1,6 @@
 name: Funscript Generator
 description: Generates funscript files from video scenes using optical flow analysis. Tag scenes with 'FunscriptGenerator_Process' to queue them for processing.
-version: 0.1.10
+version: 0.1.11
 url: https://discourse.stashapp.cc/t/funscript-generator/5124
 exec:
   - python
@@ -93,4 +93,8 @@ settings:
   add_marker:
     displayName: Add Marker on Complete
     description: Add a scene marker when funscript generation completes
+    type: BOOLEAN
+  allow_system_pip:
+    displayName: Allow System pip (break-system-packages)
+    description: Use system pip with --break-system-packages if venv creation fails
     type: BOOLEAN

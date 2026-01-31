@@ -86,3 +86,8 @@ smart_limit = True
 
 # Add a scene marker when funscript generation completes
 add_marker = True
+
+# ----------------- Install Settings -----------------
+
+# Allow system-wide pip install with --break-system-packages if venv creation fails
+allow_system_pip = False

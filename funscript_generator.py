@@ -1771,7 +1771,26 @@ def install_python_deps() -> None:
     proc_venv = subprocess.run(cmd_venv, capture_output=True, text=True)
     if proc_venv.returncode != 0:
         err = proc_venv.stderr.strip() or proc_venv.stdout.strip() or "unknown error"
-        raise RuntimeError(f"venv create failed: {err}")
+        allow_system = bool(get_plugin_setting("allow_system_pip", False))
+        if not allow_system:
+            raise RuntimeError(f"venv create failed: {err}")
+        cmd = [
+            sys.executable,
+            "-m",
+            "pip",
+            "install",
+            "--break-system-packages",
+            "stashapp-tools",
+            "numpy",
+            "opencv-python",
+            "decord",
+        ]
+        logger.info(f"Running: {' '.join(cmd)}")
+        proc = subprocess.run(cmd, capture_output=True, text=True)
+        if proc.returncode != 0:
+            err = proc.stderr.strip() or proc.stdout.strip() or "unknown error"
+            raise RuntimeError(f"pip install failed: {err}")
+        return
 
     cmd = [
         venv_pip,
