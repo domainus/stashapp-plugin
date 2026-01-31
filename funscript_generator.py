@@ -1745,6 +1745,7 @@ def process_all_scenes(overwrite: Optional[bool] = None) -> None:
 
 def install_python_deps() -> None:
     """Install required Python dependencies using pip."""
+    logger = _get_log()
     cmd = [
         sys.executable,
         "-m",
@@ -1755,7 +1756,7 @@ def install_python_deps() -> None:
         "opencv-python",
         "decord",
     ]
-    log.info(f"Running: {' '.join(cmd)}")
+    logger.info(f"Running: {' '.join(cmd)}")
     proc = subprocess.run(cmd, capture_output=True, text=True)
     if proc.returncode != 0:
         err = proc.stderr.strip() or proc.stdout.strip() or "unknown error"
