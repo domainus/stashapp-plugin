@@ -1784,20 +1784,8 @@ def run(json_input: Dict[str, Any], output: Dict[str, Any]) -> None:
     plugin_args = None
     args = json_input.get("args") or {}
     logger = _get_log()
-    try:
-        logger.debug(json_input["server_connection"])
-        os.chdir(json_input["server_connection"]["PluginDir"])
-        initialize_stash(json_input["server_connection"])
-    except Exception as e:
-        logger.error(f"Failed to initialize: {e}")
-        output["output"] = "error"
-        return
+    plugin_args = args.get("mode")
 
-    try:
-        plugin_args = args.get("mode")
-    except (KeyError, TypeError):
-        pass
-    
     if plugin_args == "install_deps":
         try:
             install_python_deps()
@@ -1809,6 +1797,15 @@ def run(json_input: Dict[str, Any], output: Dict[str, Any]) -> None:
     dep_error = init_dependencies()
     if dep_error:
         output["error"] = dep_error
+        return
+    try:
+        logger = _get_log()
+        logger.debug(json_input["server_connection"])
+        os.chdir(json_input["server_connection"]["PluginDir"])
+        initialize_stash(json_input["server_connection"])
+    except Exception as e:
+        logger.error(f"Failed to initialize: {e}")
+        output["output"] = "error"
         return
 
     if plugin_args == "process_scenes":
