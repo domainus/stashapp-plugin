@@ -1,0 +1,41 @@
+name: Funscript Generator (FunGen)
+id: fungen-stash-plugin
+description: Generate funscripts for Stash scenes using the FunGen CLI.
+version: 0.1.0
+exec:
+  - python3
+  - "{pluginDir}/fungen_stash_plugin.py"
+interface: raw
+errLog: info
+
+tasks:
+  - name: Generate funscripts for all scenes
+    description: Runs FunGen for every scene in the library and skips existing .funscript files.
+    defaultArgs:
+      scope: all
+      host: localhost
+      python_path: python3
+      fungen_path: /path/to/FunGen/main.py
+      mode: ""
+      od_mode: current
+      overwrite: false
+      no_autotune: false
+      no_copy: false
+      extra_args: []
+
+hooks:
+  - name: Auto-generate funscript on scene import
+    description: Runs FunGen when a new scene is created.
+    triggeredBy:
+      - Scene.Create.Post
+    defaultArgs:
+      scope: hook
+      host: localhost
+      python_path: python3
+      fungen_path: /path/to/FunGen/main.py
+      mode: ""
+      od_mode: current
+      overwrite: false
+      no_autotune: false
+      no_copy: false
+      extra_args: []
