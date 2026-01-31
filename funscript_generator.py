@@ -1832,7 +1832,7 @@ if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        log.info("Plugin interrupted by user")
+        _get_log().info("Plugin interrupted by user")
     except Exception as e:
-        log.error(f"Plugin failed: {e}")
+        _get_log().error(f"Plugin failed: {e}")
         sys.exit(1)
