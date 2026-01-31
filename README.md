@@ -18,6 +18,7 @@ Generates funscripts for each Stash scene using the FunGen CLI.
 4. Reload plugins in Stash.
 
 ## Usage
+- Run **Install FunGen CLI** once and set `fungen_repo` to the FunGen repo URL (optional `fungen_ref`).
 - Run **Generate funscripts for all scenes** from Tasks.
 - Automatic generation is enabled via the **Scene.Create.Post** hook.
 

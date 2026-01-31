@@ -209,6 +209,31 @@ def _run_fungen_for_scene(
     return True, f"Scene {scene_id} ok"
 
 
+def _run_install(install_dir: str, repo_url: str, repo_ref: str) -> Tuple[bool, str]:
+    if not repo_url:
+        return False, "Missing fungen_repo for install"
+    install_dir = os.path.expanduser(install_dir)
+    os.makedirs(install_dir, exist_ok=True)
+    git_dir = os.path.join(install_dir, ".git")
+    if os.path.isdir(git_dir):
+        cmd = ["git", "-C", install_dir, "pull", "--ff-only"]
+    else:
+        cmd = ["git", "clone", repo_url, install_dir]
+    cmd_ref = ["git", "-C", install_dir, "checkout", repo_ref] if repo_ref else None
+    _stderr(f"[fungen] Running: {cmd}")
+    proc = subprocess.run(cmd, capture_output=True, text=True)
+    if proc.returncode != 0:
+        err = proc.stderr.strip() or proc.stdout.strip() or "unknown error"
+        return False, f"Install failed: {err}"
+    if cmd_ref:
+        _stderr(f"[fungen] Running: {cmd_ref}")
+        proc_ref = subprocess.run(cmd_ref, capture_output=True, text=True)
+        if proc_ref.returncode != 0:
+            err = proc_ref.stderr.strip() or proc_ref.stdout.strip() or "unknown error"
+            return False, f"Checkout failed: {err}"
+    return True, f"Installed FunGen to {install_dir}"
+
+
 def main() -> None:
     input_data = _read_input()
     args = _get_args(input_data)
@@ -219,11 +244,11 @@ def main() -> None:
     scope = args.get("scope") or "all"
     python_path = args.get("python_path") or "python3"
     fungen_path = args.get("fungen_path") or ""
-    if not fungen_path:
+    if not fungen_path and scope != "install":
         print(json.dumps({"error": "Missing required arg: fungen_path"}))
         return
-    fungen_main = _resolve_fungen_main(fungen_path)
-    if not os.path.exists(fungen_main):
+    fungen_main = _resolve_fungen_main(fungen_path) if fungen_path else ""
+    if fungen_main and not os.path.exists(fungen_main):
         print(json.dumps({"error": f"FunGen entrypoint not found: {fungen_main}"}))
         return
 
@@ -243,6 +268,18 @@ def main() -> None:
     failed = 0
 
     try:
+        if scope == "install":
+            install_dir = args.get("install_dir") or ""
+            repo_url = args.get("fungen_repo") or ""
+            repo_ref = args.get("fungen_ref") or ""
+            if not install_dir:
+                raise RuntimeError("Missing install_dir for scope=install")
+            ok, msg = _run_install(install_dir, repo_url, repo_ref)
+            if ok:
+                print(json.dumps({"output": {"installed": True, "message": msg}}))
+            else:
+                print(json.dumps({"error": msg}))
+            return
         scenes: List[Dict[str, Any]] = []
         if scope == "hook":
             hook_context = args.get("hookContext") or {}
