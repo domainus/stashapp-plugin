@@ -1,8 +1,8 @@
-- id: fungen-stash-plugin
-  name: Funscript Generator (FunGen)
-  version: 0.1.8
+- id: funscript-generator
+  name: Funscript Generator
+  version: 0.1.0
   date: 2026-01-31 00:00:00
-  path: dist/fungen-stash-plugin-0.1.8.zip
-  sha256: 0114c49564e9f602def11f4dcd668eead51ef2d0d0cee23bf4a7ddc3c0a568f7
+  path: dist/funscript-generator-0.1.0.zip
+  sha256: 1e822316ef58473d1c7362de3a15fc24d2491d13d8d85f16a599f195141abe90
   metadata:
-    description: Generate funscripts for Stash scenes using the FunGen CLI.
+    description: Generate funscripts for Stash scenes using a Funscript Generator–based CLI fork.
