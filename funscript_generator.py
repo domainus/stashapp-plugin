@@ -42,22 +42,17 @@ def init_dependencies() -> Optional[str]:
     """Initialize dependencies and config. Returns error string on failure."""
     global log, StashInterface, np, cv2, VideoReader, cpu, config
     try:
-        from PythonDepManager import ensure_import
-
-        ensure_import(
-            "stashapi:stashapp-tools==0.2.58",
-            "numpy==1.26.4",
-            "opencv-python==4.10.0.84",
-            "decord==0.6.0"
-        )
-
         import stashapi.log as log_mod
         from stashapi.stashapp import StashInterface as SI
         import numpy as np_mod
         import cv2 as cv2_mod
         from decord import VideoReader as VR, cpu as cpu_mod
     except Exception as e:
-        return _fatal_error(f"Dependency error: {e}")
+        return _fatal_error(
+            "Dependency error: {0}. "
+            "Install required Python deps on the Stash host: "
+            "stashapp-tools, numpy, opencv-python, decord.".format(e)
+        )
 
     try:
         import funscript_generator_config as cfg
