@@ -3,6 +3,8 @@ Funscript Generator - StashApp Plugin
 Generates funscript files from video scenes using optical flow analysis
 """
 
+from __future__ import annotations
+
 import gc
 import os
 import sys
