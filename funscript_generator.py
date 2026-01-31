@@ -1725,6 +1725,25 @@ def process_all_scenes(overwrite: Optional[bool] = None) -> None:
     process_scenes(scenes, overwrite_override=overwrite, trigger_tag=None)
 
 
+def install_python_deps() -> None:
+    """Install required Python dependencies using pip."""
+    cmd = [
+        sys.executable,
+        "-m",
+        "pip",
+        "install",
+        "stashapp-tools",
+        "numpy",
+        "opencv-python",
+        "decord",
+    ]
+    log.info(f"Running: {' '.join(cmd)}")
+    proc = subprocess.run(cmd, capture_output=True, text=True)
+    if proc.returncode != 0:
+        err = proc.stderr.strip() or proc.stdout.strip() or "unknown error"
+        raise RuntimeError(f"pip install failed: {err}")
+
+
 # ----------------- Main Execution -----------------
 
 def main() -> None:
@@ -1746,10 +1765,6 @@ def run(json_input: Dict[str, Any], output: Dict[str, Any]) -> None:
     """Main execution logic."""
     plugin_args = None
     args = json_input.get("args") or {}
-    dep_error = init_dependencies()
-    if dep_error:
-        output["error"] = dep_error
-        return
     try:
         log.debug(json_input["server_connection"])
         os.chdir(json_input["server_connection"]["PluginDir"])
@@ -1764,6 +1779,19 @@ def run(json_input: Dict[str, Any], output: Dict[str, Any]) -> None:
     except (KeyError, TypeError):
         pass
     
+    if plugin_args == "install_deps":
+        try:
+            install_python_deps()
+            output["output"] = "ok"
+        except Exception as e:
+            output["error"] = str(e)
+        return
+
+    dep_error = init_dependencies()
+    if dep_error:
+        output["error"] = dep_error
+        return
+
     if plugin_args == "process_scenes":
         process_tagged_scenes()
         output["output"] = "ok"
